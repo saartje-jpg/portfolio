@@ -1,0 +1,6 @@
+---
+title: "Beste portofolio"
+output:
+  flexdashboard::flex_dashboard:
+    storyboard: true
+---
