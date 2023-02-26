@@ -5,10 +5,87 @@ output:
     storyboard: true
 ---
 
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(spotifyr)
+library(dplyr)
+library(plotly)
+
+billboard_2016 <- get_playlist_audio_features("", "2PcWcjfLFYUhVLh2dpa4zF")
+billboard_2017 <- get_playlist_audio_features("", "3ZQvaXiJCZCSEgei9GVIJp")
+billboard_2018 <- get_playlist_audio_features("", "6Qvc2MPgTjWwGuC1uSvbgu")
+billboard_2019 <- get_playlist_audio_features("", "6OapfKmVO7KhOBLBsAUcj3")
+billboard_2020 <- get_playlist_audio_features("", "3RQ0FTTe6QqiyRT7LpD9Uq")
+billboard_2021 <- get_playlist_audio_features("", "3pkikocxs7ubWxrm6JnBBV")
+billboard_2022 <- get_playlist_audio_features("", "14i68vJsrTAg2c66qBDYdA")
+
+billboard_2016_2022 <- rbind(billboard_2016, billboard_2017, billboard_2018, billboard_2019, billboard_2020, billboard_2021, billboard_2022) %>%
+  mutate(track.duration_s = track.duration_ms / 1000)
+
+x <- c(rep(2016, 100), rep(2017, 100), rep(2018, 100), rep(2019, 100), rep(2020, 100), rep(2021, 100), rep(2022, 100))
+billboard_2016_2022$year <- factor(x)
+```
+
 ### Introduction
 
-Tiktok is one of the most popular social media apps of today and had a big impact on how we navigate our online life and also on music.
+TikTok is one of the most popular social media apps of today and had a big impact on how we navigate our online life and also on music.
 
-In this dashboard I will visualize how music changed as Tiktok got more popular. My corpus contains top hits from 2016 until 2022, in the hopes to discover some trends. If developments in music are found, we cannot necessarily contribute those to Tiktok, but I think it is safe to assume that the rise of Tiktok has played somewhat of a role. 
+In this dashboard I will visualize how music changed as TikTok got more popular. My corpus contains top hits from 2016 until 2022 and a playlist containing the all-time biggest TikTok sounds. By analyzing these playlists I want to see if through the time, the popular music converges more to the TikTok sounds. If developments in music are found, we cannot necessarily contribute those to Tiktok, but I think it is safe o assume that the rise of Tiktok has played somewhat of a role. 
 
 A noteworthy example I would like to research is the song 'Running up the Hills" by Kate Bush, a song originally from the 1980's, that was repopularized by the series Stranger Things and Tiktok, does that fit in with the overall trend?
+
+### Songs are getting shorter
+
+```{r}
+track_duration_table <- billboard_2016_2022 %>%
+  group_by(year) %>%
+  summarise(median_track_duration_s = median(track.duration_s),
+            mean_track_duration_s = mean(track.duration_s))
+
+track_duration <- ggplot(track_duration_table, aes(year, mean_track_duration_s, group=1)) +
+  geom_line() +
+  geom_point() +
+  theme_bw() +
+  labs(
+    x = "Year",
+    y = "Mean track duration in seconds",
+    title = "Popular songs have gotten shorter",
+    subtitle = "The track duration of the most popular songs in 2016 and 2022"
+  )
+
+ggplotly(track_duration)
+```
+
+We can see that the track duration has significantly gone down since TikTok got popular. TikTok started in 2017, but had already gained significant populairty in 2019 (REFERENCE) and this has since then only been rising.
+
+With the rise of TikTok the attention span of teenagers has been going down (REFERENCE). This also includes songs, so to become popular, the song should not be too long, for the attention span of most listeners are not this long anymore.
+
+
+### Danceability
+
+```{r}
+danceability_table <- billboard_2016_2022 %>%
+  group_by(year) %>%
+  summarise(median_danceability = median(danceability),
+            mean_danceability = mean(danceability))
+
+danceability <- ggplot(danceability_table, aes(year, mean_danceability, group=1)) +
+  geom_line() +
+  geom_point() +
+  theme_bw() +
+  labs(
+    x = "Year",
+    y = "Mean danceability",
+    title = "TikTok does not have an effect on danceability",
+    subtitle = "TikTok does not seem to have any effect on the danceability of popular songs"
+  )
+
+ggplotly(danceability)
+```
+
+I also want to plot a playlist of most popular TikTok songs of all time, but it is quite hard to define this. Maybe then I can say something about the results, if this is significant, but for now it does not seem like it.
+
+### Conclusion
+
+Conclusion. TikTok has an effect on music.
