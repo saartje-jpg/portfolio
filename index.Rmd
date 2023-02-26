@@ -57,9 +57,10 @@ track_duration <- ggplot(track_duration_table, aes(year, mean_track_duration_s, 
 ggplotly(track_duration)
 ```
 
-We can see that the track duration has significantly gone down since TikTok got popular. TikTok started in 2017, but had already gained significant populairty in 2019 (REFERENCE) and this has since then only been rising.
+***
 
-With the rise of TikTok the attention span of teenagers has been going down (REFERENCE). This also includes songs, so to become popular, the song should not be too long, for the attention span of most listeners are not this long anymore.
+* We can see that the track duration has significantly gone down since TikTok got popular. TikTok started in 2017, but had already gained significant populairty in 2019 (REFERENCE) and this has since then only been rising.
+* With the rise of TikTok the attention span of teenagers has been going down (REFERENCE). This also includes songs, so to become popular, the song should not be too long, for the attention span of most listeners are not this long anymore.
 
 
 ### Danceability
@@ -84,7 +85,9 @@ danceability <- ggplot(danceability_table, aes(year, mean_danceability, group=1)
 ggplotly(danceability)
 ```
 
-I also want to plot a playlist of most popular TikTok songs of all time, but it is quite hard to define this. Maybe then I can say something about the results, if this is significant, but for now it does not seem like it.
+***
+
+* I also want to plot a playlist of most popular TikTok songs of all time, but it is quite hard to define this. Maybe then I can say something about the results, if this is significant, but for now it does not seem like it.
 
 ### Conclusion
 
