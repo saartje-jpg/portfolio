@@ -1,8 +1,10 @@
 ---
-title: "Beste portofolio"
+title: "What makes a TikTok song"
+author: "Saar Schnieders"
 output:
   flexdashboard::flex_dashboard:
-    storyboard: true
+    orientation: columns
+    vertical_layout: fill
 ---
 
 ```{r setup, include=FALSE}
@@ -15,8 +17,6 @@ library(dplyr)
 library(compmus)
 
 # load playlists
-billboard_2016 <- get_playlist_audio_features("", "2PcWcjfLFYUhVLh2dpa4zF")
-billboard_2017 <- get_playlist_audio_features("", "3ZQvaXiJCZCSEgei9GVIJp")
 billboard_2018 <- get_playlist_audio_features("", "6Qvc2MPgTjWwGuC1uSvbgu")
 billboard_2019 <- get_playlist_audio_features("", "6OapfKmVO7KhOBLBsAUcj3")
 billboard_2020 <- get_playlist_audio_features("", "3RQ0FTTe6QqiyRT7LpD9Uq")
@@ -29,36 +29,282 @@ tiktok_2021 <- get_playlist_audio_features("", "3rcnWnLbLdhv5ywbckRezp")
 tiktok_2022 <- get_playlist_audio_features("", "61yLxL3ZHR1uU0K893M7Gy")
 
 # make column track.duration_s that shows track duration in seconds
-billboard_2016_2022 <- rbind(billboard_2016, billboard_2017, billboard_2018, billboard_2019, billboard_2020, billboard_2021, billboard_2022) %>%
+billboard <- rbind(billboard_2018, billboard_2019, billboard_2020, billboard_2021, billboard_2022) %>%
   mutate(track.duration_s = track.duration_ms / 1000)
-tiktok_2018_2022 <- rbind(tiktok_2018, tiktok_2019, tiktok_2020, tiktok_2021, tiktok_2022) %>%
+tiktok <- rbind(tiktok_2018, tiktok_2019, tiktok_2020, tiktok_2021, tiktok_2022) %>%
   mutate(track.duration_s = track.duration_ms / 1000)
 
 # make column year that divides all songs by year in which they were trending
-x <- c(rep(2016, 100), rep(2017, 100), rep(2018, 100), rep(2019, 100), rep(2020, 100), rep(2021, 100), rep(2022, 100))
-billboard_2016_2022$year <- factor(x)
+x <- c(rep(2018, 100), rep(2019, 100), rep(2020, 100), rep(2021, 100), rep(2022, 100))
+billboard$year <- factor(x)
 y <- c(rep(2018, 76), rep(2019, 224), rep(2020, 357), rep(2021, 331), rep(2022, 267))
-tiktok_2018_2022$year <- factor(y)
+tiktok$year <- factor(y)
 
 # make a dataframe with all songs in it
-all_songs <- rbind(billboard_2016_2022, tiktok_2018_2022)
-
-# make column that states if it's tiktok or billboard
-z <- c(rep("Billboard", 700), rep("TikTok", 1255))
+all_songs <- rbind(billboard, tiktok)
+z <- c(rep("Billboard", 500), rep("TikTok", 1255))
 all_songs$type <- factor(z)
+
+# songs that are just tiktok
+just_tiktok <- tiktok[!(tiktok$track.uri %in% billboard$track.uri),]
+just_tiktok_billboard <- rbind(billboard, just_tiktok)
+x <- c(rep("Billboard", 500), rep("TikTok", 1083))
+just_tiktok_billboard$type <- factor(x)
 ```
 
-### Introduction
+Week 10 {.storyboard}
+=====================================
+
+### Barchart of distribution of Keys
+
+```{r}
+keys <- just_tiktok_billboard %>%
+  group_by(key_name, type, year) %>%
+  summarize(count = n()) %>%
+  ungroup(key_name, type) %>%
+  group_by(type, year) %>%
+  mutate(frequency = count / sum(count)) %>%
+  ggplot(aes(x = key_name, frequency, fill = type), stat = "count") +
+  geom_col(position = "dodge") +
+  labs(x = "Keys", 
+       y = "Frequency Ratio",
+       title = "Distribution Across Keys by year by type") +
+  facet_wrap(~ year)
+
+ggplotly(keys)
+```
+
+-----------------------------------------------------------------------
+
+* In most years the key C# is used most for both the Billboard and TikTok corpus and D# is used the least overall.
+* For Billboard songs, the key C or C# is always the most used in the last five years. TikTok songs only divert from this trend in the last year, with B being the most used key in the year 2022.
+* Notable is that the key A is used almost twice as much in TikTok songs in the last two years.
+* The key G was only more common in Billboard songs than in TikTok songs in the year 2020, the opposite is true for G# in the year 2021.
+* Overall, although there are a lot of differences, there is not a clear trend that distinguishes the keys used in TikTok and Billboard songs.
+
+### Chordogram
+
+```{r}
+circshift <- function(v, n) {
+  if (n == 0) v else c(tail(v, n), head(v, -n))
+}
+
+#      C     C#    D     Eb    E     F     F#    G     Ab    A     Bb    B
+major_chord <-
+  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    0,    0)
+minor_chord <-
+  c(   1,    0,    0,    1,    0,    0,    0,    1,    0,    0,    0,    0)
+seventh_chord <-
+  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    1,    0)
+
+major_key <-
+  c(6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88)
+minor_key <-
+  c(6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17)
+
+chord_templates <-
+  tribble(
+    ~name, ~template,
+    "Gb:7", circshift(seventh_chord, 6),
+    "Gb:maj", circshift(major_chord, 6),
+    "Bb:min", circshift(minor_chord, 10),
+    "Db:maj", circshift(major_chord, 1),
+    "F:min", circshift(minor_chord, 5),
+    "Ab:7", circshift(seventh_chord, 8),
+    "Ab:maj", circshift(major_chord, 8),
+    "C:min", circshift(minor_chord, 0),
+    "Eb:7", circshift(seventh_chord, 3),
+    "Eb:maj", circshift(major_chord, 3),
+    "G:min", circshift(minor_chord, 7),
+    "Bb:7", circshift(seventh_chord, 10),
+    "Bb:maj", circshift(major_chord, 10),
+    "D:min", circshift(minor_chord, 2),
+    "F:7", circshift(seventh_chord, 5),
+    "F:maj", circshift(major_chord, 5),
+    "A:min", circshift(minor_chord, 9),
+    "C:7", circshift(seventh_chord, 0),
+    "C:maj", circshift(major_chord, 0),
+    "E:min", circshift(minor_chord, 4),
+    "G:7", circshift(seventh_chord, 7),
+    "G:maj", circshift(major_chord, 7),
+    "B:min", circshift(minor_chord, 11),
+    "D:7", circshift(seventh_chord, 2),
+    "D:maj", circshift(major_chord, 2),
+    "F#:min", circshift(minor_chord, 6),
+    "A:7", circshift(seventh_chord, 9),
+    "A:maj", circshift(major_chord, 9),
+    "C#:min", circshift(minor_chord, 1),
+    "E:7", circshift(seventh_chord, 4),
+    "E:maj", circshift(major_chord, 4),
+    "G#:min", circshift(minor_chord, 8),
+    "B:7", circshift(seventh_chord, 11),
+    "B:maj", circshift(major_chord, 11),
+    "D#:min", circshift(minor_chord, 3)
+  )
+
+key_templates <-
+  tribble(
+    ~name, ~template,
+    "Gb:maj", circshift(major_key, 6),
+    "Bb:min", circshift(minor_key, 10),
+    "Db:maj", circshift(major_key, 1),
+    "F:min", circshift(minor_key, 5),
+    "Ab:maj", circshift(major_key, 8),
+    "C:min", circshift(minor_key, 0),
+    "Eb:maj", circshift(major_key, 3),
+    "G:min", circshift(minor_key, 7),
+    "Bb:maj", circshift(major_key, 10),
+    "D:min", circshift(minor_key, 2),
+    "F:maj", circshift(major_key, 5),
+    "A:min", circshift(minor_key, 9),
+    "C:maj", circshift(major_key, 0),
+    "E:min", circshift(minor_key, 4),
+    "G:maj", circshift(major_key, 7),
+    "B:min", circshift(minor_key, 11),
+    "D:maj", circshift(major_key, 2),
+    "F#:min", circshift(minor_key, 6),
+    "A:maj", circshift(major_key, 9),
+    "C#:min", circshift(minor_key, 1),
+    "E:maj", circshift(major_key, 4),
+    "G#:min", circshift(minor_key, 8),
+    "B:maj", circshift(major_key, 11),
+    "D#:min", circshift(minor_key, 3)
+  )
+
+twenty_five <-
+  get_tidy_audio_analysis("0JOkg9ppNx6yXxVBqfDpB4") |>
+  compmus_align(sections, segments) |>
+  select(sections) |>
+  unnest(sections) |>
+  mutate(
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "mean", norm = "manhattan"
+      )
+  )
+
+twenty_five |> 
+  compmus_match_pitch_template(
+    chord_templates,         # Change to chord_templates if descired
+    method = "euclidean",  # Try different distance metrics
+    norm = "manhattan"     # Try different norms
+  ) |>
+  ggplot(
+    aes(x = start + duration / 2, width = duration, y = name, fill = d)
+  ) +
+  geom_tile() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_minimal() +
+  labs(x = "Time (s)", y = "")
+```
+
+-----------------------------------------------------------------------
+
+* For the Chordogram I have used the song Monkeys Spinning Monkeys. Although it may not sound familiar, I think anyone who has used social media in the past 5 years will recognize this sound. It is a typical TikTok background sound that is ideal for a video in which you don't want the sound taking up all the attention.
+* In the beginning two parts are repeated (the two mainly yellow blocks), which are clearly written in C-major. Then the big block around 60 seconds is where a modulation sets in. The same part that was repeated earlier is again repeated but now in G major.
+
+Introduction {data-navmenu=Introduction}
+=====================================
+
+Introduction {data-width=600}
+-----------------------------------------------------------------------
 
 TikTok is one of the most popular social media apps of today and had a big impact on how we navigate our online life and also on music.
 
-In this dashboard I will visualize how music changed as TikTok got more popular. My corpus contains top hits from 2016 until 2022 and a playlist containing the all-time biggest TikTok sounds. By analyzing these playlists I want to see if through the time, the popular music converges more to the TikTok sounds. If developments in music are found, we cannot necessarily contribute those to Tiktok, but I think it is safe to assume that the rise of Tiktok has played somewhat of a role.
+In this dashboard I will visualize how music changed as TikTok got more popular. My corpus contains Billboard Year-End Hottest Singles from 2018 until 2022 and the most popular TikTok sounds per year. I would like to research three things:
+
+1. What characterizes a TikTok song. 
+2. To what extent popular music and TikTok music are similar.
+3. How TikTok music differs from popular music.
 
 A noteworthy example I would like to research is the song 'Running up the Hills" by Kate Bush, a song originally from the 1980's, that was repopularized by the series Stranger Things and Tiktok, does that fit in with the overall trend?
 
+Spotify {data-width=400}
+-----------------------------------------------------------------------
+
+<!-- <iframe src="https://open.spotify.com/embed/playlist/3yn3Ng6rgPKAoW5KV79GGj?utm_source=generator" width="50%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe> -->
+
+<!-- <iframe src="https://open.spotify.com/embed/playlist/2Zf8RxLhxAot2yKfn8G77v?utm_source=generator&theme=0" width="50%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe> -->
+
+My data {data-navmenu=Introduction}
+=====================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### My data
+
 For my datasets I have used the Billboard Year-End Hot 100 singles of the years 2016 to 2022 for the popular songs. For the TikTok charts I have used the website https://tokboard.com and the datasets of the user Sveta151 on kaggle (https://www.kaggle.com/sveta151).
 
-### Running up the Hills chromagram
+For the popular songs I have used the Billboard Year-End Hot 100 singles of each year. Each playlist contains a 100 singles, so in total my corpus contains 500 'popular' songs.
+
+For the TikTok data this is a bit more complicated. I could not find a lot of reliable sources for what sounds were the most popular per year or per month. From september 2018 to june 2021 I found the website https://tokboard.com. The 100 most popular sound were shown per month and I added all sounds that were songs to the corpus. There was no data after june 2021, so I complemented the _tokboard_-data with a dataset I found on kaggle by the user Sveta151 (https://www.kaggle.com/sveta151). For the previous years her data was quite similar to mine, so I complemented the years 2021 and 2022 with her playlists.
+
+To finish it off, to get a more coherent view of TikTok and popular songs, I deleted all songs in the TikTok dataframe that were also present in the Billboard dataframe. In this way, songs that got popular on TikTok because they were already popular will not show in the visualizations.
+
+**Songs per type**
+
+We can see that the amount of songs per type is not equally distributed, with the Billboard containing 100 songs per year, every year and TikTok containing in between 76 and 357 songs per year. I have made sure that the songs are as representable as possible for each type and year, so for now I don't forsee big problems resulting from this inequality.
+
+**Energy and Popularity in 2022**
+
+As expected we can see that the Billboard songs are more popular on average than the TikTok songs. When we look at danceability we can see the a very similar distribution for the more popular songs for the Billboard as well as the TikTok plot. But for the less popular TikTok songs, the energy seems to be higher on average.
+
+**Speechiness and tempo**
+
+For the speechiness and tempo we can see that these are pretty equally distributed among the two different types. TikTok seems to have a slightly bigger distribution, but that is mostly because TikTok has almost three times as many data points, so that can probably be attributed to that.
+
+Distributions of dataset {.tabset}
+-----------------------------------------------------------------------
+
+### Songs per type
+
+```{r}
+amount <- ggplot(just_tiktok_billboard, aes(x = year, fill = type)) +
+  geom_bar(position = "dodge") +
+  labs(title = "TikTok is overrepresented in the corpus",
+       subtitle = "Amount of songs per type per year in corpus")
+
+ggplotly(amount)
+```
+
+### Energy and Popularity in 2022
+
+```{r}
+information <- just_tiktok_billboard %>%
+  rename(track = track.name,
+         popularity = track.popularity) %>%
+  filter(year == 2022) %>%
+  ggplot(aes(x = popularity, y = energy, color = type, key = track)) +
+  labs(x = "Popularity",
+       y = "Energy",
+       title = "Distribution of Popularity and Energy per type in the year 2022") +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~ type)
+
+ggplotly(information)
+```
+
+### Speechiness and Tempo
+```{r}
+information <- just_tiktok_billboard %>%
+  rename(track = track.name) %>%
+  ggplot(aes(x = speechiness, y = tempo, color = type, key = track)) +
+  labs(x = "Speechiness",
+       y = "Tempo",
+       title = "Distribution of Speechiness and Tempo per type") +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~ type)
+  
+ggplotly(information)
+```
+
+Chromagrams
+=====================================
+
+_Running up that Hill_ Chromagram
+-----------------------------------------------------------------------
 
 ```{r}
 hills <-
@@ -79,16 +325,18 @@ hills |>
     )
   ) +
   geom_tile() +
-  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude", title = "Kate Bush - Running Up That Hill (A Deal With God)") +
   theme_minimal() +
   scale_fill_viridis_c()
 ```
 
-***
+Explanation
+-----------------------------------------------------------------------
 
 * I'm not yet sure what I could say with a chromagram, but a lot of C's on this one.
 
-### DTP of popular TikTok song
+DTP of popular TikTok song
+=====================================
 
 ```{r}
 unholy <-
@@ -117,19 +365,19 @@ compmus_long_distance(
   labs(x = "Unholy", y = "Unholy", fill = "distance") +
   theme_minimal() +
   scale_fill_viridis_c()
-
 ```
 
-***
+-----------------------------------------------------------------------
 
 * This is a DTP of the most popular song in the entire database: Unholy by Sam Smith and Kim Petras. You can clearly see the bridge just after second 100 that clearly clashes with the rest of the song (as the distance is the biggest in this part). But overall the song is apparently very similar to itself in most parts.
 * For the other DTP I want to find the most popular song of the TikTok songs that is not in the Billboard charts and see how that compares to the DTP already shown. I just don't know yet how to find the first one.
 * I have to say that with this visualization I'm very open to feedback and tips on what things I could find, because I'm not very sure what I'm looking for and how to look for it.
 
-### Songs are getting shorter
+Songs are getting shorter
+=====================================
 
 ```{r}
-track_duration_table <- billboard_2016_2022 %>%
+track_duration_table <- billboard %>%
   group_by(year) %>%
   summarise(median_track_duration_s = median(track.duration_s),
             mean_track_duration_s = mean(track.duration_s))
@@ -148,27 +396,30 @@ track_duration <- ggplot(track_duration_table, aes(year, mean_track_duration_s, 
 ggplotly(track_duration)
 ```
 
-***
+-----------------------------------------------------------------------
 
 * We can see that the track duration has significantly gone down since TikTok got popular. TikTok started in 2017, but had already gained significant populairty in 2019 and this has since then only been rising.
 * With the rise of TikTok the attention span of teenagers has been going down. This also includes songs, so to become popular, the song should not be too long, for the attention span of most listeners are not this long anymore.
 
 
+Danceability {.storyboard}
+=====================================
+
 ### Danceability seems to follow a trend in both the TikTok and the Billboard chart
 
 ```{r}
 # make a table that shows mean danceability per year
-danceability_table <- all_songs %>%
+danceability_table <- just_tiktok_billboard %>%
   group_by(type, year) %>%
   summarise(mean_danceability = mean(danceability))
 
 # plot mean danceability per year
 danceability <- ggplot(danceability_table, aes(year, mean_danceability, color = type)) +
   geom_line(aes(group = type)) +
-  geom_hline(yintercept = mean(tiktok_2018_2022$danceability), color = "#00BFC4", size = 1) +
-  annotate("text", x=2, y=mean(tiktok_2018_2022$danceability) + 0.003, label="Mean TikTok", size=3) +
-  geom_hline(yintercept = mean(billboard_2016_2022$danceability), color = "#F8766D", size = 1) +
-  annotate("text", x=6, y=mean(billboard_2016_2022$danceability) + 0.003, label="Mean Billboard", size=3) +
+  geom_hline(yintercept = mean(tiktok$danceability), linetype = "dotted", color = "#00BFC4", size = 1) +
+  annotate("text", x=2.5, y=mean(tiktok$danceability) + 0.003, label="Mean TikTok", size=3) +
+  geom_hline(yintercept = mean(billboard$danceability), linetype = "dotted", color = "#F8766D", size = 1) +
+  annotate("text", x=4, y=mean(billboard$danceability) + 0.003, label="Mean Billboard", size=3) +
   labs(
     x = "Year",
     y = "Mean danceability",
@@ -180,12 +431,15 @@ danceability <- ggplot(danceability_table, aes(year, mean_danceability, color = 
 ggplotly(danceability)
 ```
 
-***
+-----------------------------------------------------------------------
 
 * We can see that the mean danceability is higher for popular TikTok songs than for songs that were in the Billboard Hot 100. 
 * It is also notable that the trend in the last three years are very similar for both chart-types.
 * This last point can be contributed to the fact that TikTok gained the most popularity in 2020 and it could be said that popular music and TikTok trends had a bigger influence on each other.
 
-### Conclusion
+### Next 
+
+Conclusion
+=====================================
 
 Conclusion. TikTok has an effect on music.
