@@ -223,9 +223,9 @@ A noteworthy example I would like to research is the song 'Running up the Hills"
 Spotify {data-width=400}
 -----------------------------------------------------------------------
 
-<!-- <iframe src="https://open.spotify.com/embed/playlist/3yn3Ng6rgPKAoW5KV79GGj?utm_source=generator" width="50%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe> -->
+<iframe src="https://open.spotify.com/embed/playlist/3yn3Ng6rgPKAoW5KV79GGj?utm_source=generator" width="50%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
 
-<!-- <iframe src="https://open.spotify.com/embed/playlist/2Zf8RxLhxAot2yKfn8G77v?utm_source=generator&theme=0" width="50%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe> -->
+<iframe src="https://open.spotify.com/embed/playlist/2Zf8RxLhxAot2yKfn8G77v?utm_source=generator&theme=0" width="50%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
 
 My data {data-navmenu=Introduction}
 =====================================
