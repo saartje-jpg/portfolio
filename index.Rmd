@@ -52,157 +52,142 @@ x <- c(rep("Billboard", 500), rep("TikTok", 1083))
 just_tiktok_billboard$type <- factor(x)
 ```
 
-Week 10 {.storyboard}
+Week 11 {.storyboard}
 =====================================
 
-### Barchart of distribution of Keys
+### Barchart of distribution of Tempi {data-commentary-width=500}
 
 ```{r}
-keys <- just_tiktok_billboard %>%
-  group_by(key_name, type, year) %>%
-  summarize(count = n()) %>%
-  ungroup(key_name, type) %>%
-  group_by(type, year) %>%
-  mutate(frequency = count / sum(count)) %>%
-  ggplot(aes(x = key_name, frequency, fill = type), stat = "count") +
-  geom_col(position = "dodge") +
-  labs(x = "Keys", 
-       y = "Frequency Ratio",
-       title = "Distribution Across Keys by year by type") +
-  facet_wrap(~ year)
 
-ggplotly(keys)
+tempi <- just_tiktok_billboard %>%
+  ggplot(aes(x = tempo, fill = type)) +
+  geom_histogram() +
+  labs(x = "Tempo", 
+       y = "Count",
+       title = "Distribution of Tempi by Type") +
+  facet_wrap(~ type)
+
+ggplotly(tempi)
 ```
 
 -----------------------------------------------------------------------
 
-* In most years the key C# is used most for both the Billboard and TikTok corpus and D# is used the least overall.
-* For Billboard songs, the key C or C# is always the most used in the last five years. TikTok songs only divert from this trend in the last year, with B being the most used key in the year 2022.
-* Notable is that the key A is used almost twice as much in TikTok songs in the last two years.
-* The key G was only more common in Billboard songs than in TikTok songs in the year 2020, the opposite is true for G# in the year 2021.
-* Overall, although there are a lot of differences, there is not a clear trend that distinguishes the keys used in TikTok and Billboard songs.
+* In comparison to the TikTok chart, the Billboard distribution of tempi looks relatively even, with a mode at around tempo 100 bpm.
+* TikTok has two big modes, one at around 100 bpm like the Billboard and the other around 125 bpm, significantly faster than the Billboard mode.
+* From this data I would like to conclude that TikTok songs typically have a bigger bpm than popular songs.
 
-### Chordogram
+### Tempogram of Cannibal by Kesha {data-commentary-width=500}
 
 ```{r}
-circshift <- function(v, n) {
-  if (n == 0) v else c(tail(v, n), head(v, -n))
-}
+cannibal <- get_tidy_audio_analysis("3JTMWdhcJPiegDSe7SvZS3")
 
-#      C     C#    D     Eb    E     F     F#    G     Ab    A     Bb    B
-major_chord <-
-  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    0,    0)
-minor_chord <-
-  c(   1,    0,    0,    1,    0,    0,    0,    1,    0,    0,    0,    0)
-seventh_chord <-
-  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    1,    0)
+cannibal |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  labs(title = "Kesha - Cannibal",
+       x = "Time (s)", 
+       y = "Tempo (BPM)") +
+  theme_classic()
+```
 
-major_key <-
-  c(6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88)
-minor_key <-
-  c(6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17)
+-----------------------------------------------------------------------
 
-chord_templates <-
-  tribble(
-    ~name, ~template,
-    "Gb:7", circshift(seventh_chord, 6),
-    "Gb:maj", circshift(major_chord, 6),
-    "Bb:min", circshift(minor_chord, 10),
-    "Db:maj", circshift(major_chord, 1),
-    "F:min", circshift(minor_chord, 5),
-    "Ab:7", circshift(seventh_chord, 8),
-    "Ab:maj", circshift(major_chord, 8),
-    "C:min", circshift(minor_chord, 0),
-    "Eb:7", circshift(seventh_chord, 3),
-    "Eb:maj", circshift(major_chord, 3),
-    "G:min", circshift(minor_chord, 7),
-    "Bb:7", circshift(seventh_chord, 10),
-    "Bb:maj", circshift(major_chord, 10),
-    "D:min", circshift(minor_chord, 2),
-    "F:7", circshift(seventh_chord, 5),
-    "F:maj", circshift(major_chord, 5),
-    "A:min", circshift(minor_chord, 9),
-    "C:7", circshift(seventh_chord, 0),
-    "C:maj", circshift(major_chord, 0),
-    "E:min", circshift(minor_chord, 4),
-    "G:7", circshift(seventh_chord, 7),
-    "G:maj", circshift(major_chord, 7),
-    "B:min", circshift(minor_chord, 11),
-    "D:7", circshift(seventh_chord, 2),
-    "D:maj", circshift(major_chord, 2),
-    "F#:min", circshift(minor_chord, 6),
-    "A:7", circshift(seventh_chord, 9),
-    "A:maj", circshift(major_chord, 9),
-    "C#:min", circshift(minor_chord, 1),
-    "E:7", circshift(seventh_chord, 4),
-    "E:maj", circshift(major_chord, 4),
-    "G#:min", circshift(minor_chord, 8),
-    "B:7", circshift(seventh_chord, 11),
-    "B:maj", circshift(major_chord, 11),
-    "D#:min", circshift(minor_chord, 3)
-  )
+* I chose the song Cannibal by Kesha, not necessarily because it was an outlier, but because it has a tempo of just below 130, which is more typical of a TikTok song.
+* The tempo throughout the song stays the same, but in certain parts the program cannot distinguish it anymore, because the beat disappears in the song at these moments. I thought this to be an interesting example, to see how the program would pick up on it.
+* You can still see certain slivers of the real tempo, but it also seems like it picks up the 3-count measure (so 3 instead of 4 counts in the same measure), which is visible at the sliver around 100 bpm.
 
-key_templates <-
-  tribble(
-    ~name, ~template,
-    "Gb:maj", circshift(major_key, 6),
-    "Bb:min", circshift(minor_key, 10),
-    "Db:maj", circshift(major_key, 1),
-    "F:min", circshift(minor_key, 5),
-    "Ab:maj", circshift(major_key, 8),
-    "C:min", circshift(minor_key, 0),
-    "Eb:maj", circshift(major_key, 3),
-    "G:min", circshift(minor_key, 7),
-    "Bb:maj", circshift(major_key, 10),
-    "D:min", circshift(minor_key, 2),
-    "F:maj", circshift(major_key, 5),
-    "A:min", circshift(minor_key, 9),
-    "C:maj", circshift(major_key, 0),
-    "E:min", circshift(minor_key, 4),
-    "G:maj", circshift(major_key, 7),
-    "B:min", circshift(minor_key, 11),
-    "D:maj", circshift(major_key, 2),
-    "F#:min", circshift(minor_key, 6),
-    "A:maj", circshift(major_key, 9),
-    "C#:min", circshift(minor_key, 1),
-    "E:maj", circshift(major_key, 4),
-    "G#:min", circshift(minor_key, 8),
-    "B:maj", circshift(major_key, 11),
-    "D#:min", circshift(minor_key, 3)
-  )
+### Tempogram next to Self-Similarity Matrix of Cannibal - Kesha {data-commentary-width=500}
 
-twenty_five <-
-  get_tidy_audio_analysis("0JOkg9ppNx6yXxVBqfDpB4") |>
-  compmus_align(sections, segments) |>
-  select(sections) |>
-  unnest(sections) |>
+```{r}
+cannibal_dtp <-
+  get_tidy_audio_analysis("3JTMWdhcJPiegDSe7SvZS3") |>
+  compmus_align(sections, segments) |> # Change `bars`
+  select(sections) |> # in all three
+  unnest(sections) |> # of these lines.
   mutate(
     pitches =
       map(segments,
           compmus_summarise, pitches,
-          method = "mean", norm = "manhattan"
+          method = "rms", norm = "euclidean" # Change summary & norm.
+      )
+  ) |>
+  mutate(
+    timbre =
+      map(segments,
+          compmus_summarise, timbre,
+          method = "rms", norm = "euclidean" # Change summary & norm.
       )
   )
 
-twenty_five |> 
-  compmus_match_pitch_template(
-    chord_templates,         # Change to chord_templates if descired
-    method = "euclidean",  # Try different distance metrics
-    norm = "manhattan"     # Try different norms
-  ) |>
+cannibal_dtp <- cannibal_dtp |>
+  compmus_self_similarity(pitches, "cosine") |>
   ggplot(
-    aes(x = start + duration / 2, width = duration, y = name, fill = d)
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
   ) +
   geom_tile() +
-  scale_fill_viridis_c(guide = "none") +
+  coord_equal() +
+  labs(x = "cannibal", y = "cannibal", fill = "distance") +
   theme_minimal() +
-  labs(x = "Time (s)", y = "")
+  scale_fill_viridis_c()
+
+cannibal_tempo <- get_tidy_audio_analysis("3JTMWdhcJPiegDSe7SvZS3")
+
+cannibal_tempo <- cannibal_tempo |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  labs(title = "Kesha - Cannibal",
+       x = "Time (s)", 
+       y = "Tempo (BPM)") +
+  theme_classic()
+
+subplot(ggplotly(cannibal_tempo),
+        ggplotly(cannibal_dtp))  
 ```
 
------------------------------------------------------------------------
+***
 
-* For the Chordogram I have used the song Monkeys Spinning Monkeys. Although it may not sound familiar, I think anyone who has used social media in the past 5 years will recognize this sound. It is a typical TikTok background sound that is ideal for a video in which you don't want the sound taking up all the attention.
-* In the beginning two parts are repeated (the two mainly yellow blocks), which are clearly written in C-major. Then the big block around 60 seconds is where a modulation sets in. The same part that was repeated earlier is again repeated but now in G major.
+**Structure of the song**
+
+0 - 7 intro of the song: Starts of with a strong beat.
+
+7 - 21 verse 1: Kesha starts singing over the beat, no other instruments or sounds are added.
+
+22 - 37: intro to the chorus: Kesha's voice is toned down a bit, it sounds like the autotune is more apparent here. Also synthesizers are added.
+
+38 - 51: chorus part 1: The beat disappears, the synthesizers are tuned up. Kesha is the centre here with some long high notes.
+
+52 - 66: chorus part 2: Chorus part 1 repeats, but the beat reappears.
+
+67 - 80: verse 2: Sounds very similar to the first refrain (7-21), the synthesizers are a bit more apparent here, but the centre of the refrain is still Kesha and the beat.
+
+81 - 125: chorus: The intro to the chorus and the two parts of the chorus are repeated. No noticeable difference.
+126 - 140: bridge part 1: The beat is singing, Kesha's voice is really the centre like in no other part of the song.
+
+141 - 154: bridge part 2: The beat reappears again, Kesha repeats what she did in the first part of the bridge. At the end a synthesizer is gearing us up for the last time we here the chorus.
+
+155 - 184: chorus: Chorus repeats again. Some adlibs are added for an extra boom moment.
+
+185 - 194: outro: The outro sounds very similar to the intro, with a strong beat to the center of it. Kesha is saying some stuff through it and laughs. The song ends.
+
+**Comparison**
+
+* In the tempogram, the part where the chorus starts is very visible, because here the beat ceases for a few seconds at around 38 seconds in, this is seen again at around 81 seconds and 155 seconds, just as it is in the song.
+
+* This is less apparent in the self-similarity matrix, also because the sections are not fully alligned with the sections I just described. 
+
+* Up until the bridge there are two moments in which the beat disappears, the first moment is very clear in the matrix, with a section from 30 to 45 seconds. The difference between the other sections that do contain a beat is much bigger. The second moment is less clear, but is at the section that is from 82 to 112 seconds. This sections has the smallest difference between the first section in which the beat disappears. But because the section also contains a part of the chorus in which the beat reappears the structure is less clear.
+
+* The biggest difference is seen in the last time the chorus is sung, after the bridge. The section that best shows this is from 164 to 176 seconds. The difference looks very similar to the difference of the first section.
 
 Introduction {data-navmenu=Introduction}
 =====================================
@@ -376,6 +361,8 @@ compmus_long_distance(
 Songs are getting shorter
 =====================================
 
+-----------------------------------------------------------------------
+
 ```{r}
 track_duration_table <- billboard %>%
   group_by(year) %>%
@@ -437,7 +424,157 @@ ggplotly(danceability)
 * It is also notable that the trend in the last three years are very similar for both chart-types.
 * This last point can be contributed to the fact that TikTok gained the most popularity in 2020 and it could be said that popular music and TikTok trends had a bigger influence on each other.
 
-### Next 
+Keys {.storyboard}
+=====================================
+
+### Barchart of distribution of Keys
+
+```{r}
+keys <- just_tiktok_billboard %>%
+  group_by(key_name, type, year) %>%
+  summarize(count = n()) %>%
+  ungroup(key_name, type) %>%
+  group_by(type, year) %>%
+  mutate(frequency = count / sum(count)) %>%
+  ggplot(aes(x = key_name, frequency, fill = type), stat = "count") +
+  geom_col(position = "dodge") +
+  labs(x = "Keys", 
+       y = "Frequency Ratio",
+       title = "Distribution Across Keys by year by type") +
+  facet_wrap(~ year)
+
+ggplotly(keys)
+```
+
+-----------------------------------------------------------------------
+
+* In most years the key C# is used most for both the Billboard and TikTok corpus and D# is used the least overall.
+* For Billboard songs, the key C or C# is always the most used in the last five years. TikTok songs only divert from this trend in the last year, with B being the most used key in the year 2022.
+* Notable is that the key A is used almost twice as much in TikTok songs in the last two years.
+* The key G was only more common in Billboard songs than in TikTok songs in the year 2020, the opposite is true for G# in the year 2021.
+* Overall, although there are a lot of differences, there is not a clear trend that distinguishes the keys used in TikTok and Billboard songs.
+
+### Chordogram
+
+```{r}
+circshift <- function(v, n) {
+  if (n == 0) v else c(tail(v, n), head(v, -n))
+}
+
+#      C     C#    D     Eb    E     F     F#    G     Ab    A     Bb    B
+major_chord <-
+  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    0,    0)
+minor_chord <-
+  c(   1,    0,    0,    1,    0,    0,    0,    1,    0,    0,    0,    0)
+seventh_chord <-
+  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    1,    0)
+
+major_key <-
+  c(6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88)
+minor_key <-
+  c(6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17)
+
+chord_templates <-
+  tribble(
+    ~name, ~template,
+    "Gb:7", circshift(seventh_chord, 6),
+    "Gb:maj", circshift(major_chord, 6),
+    "Bb:min", circshift(minor_chord, 10),
+    "Db:maj", circshift(major_chord, 1),
+    "F:min", circshift(minor_chord, 5),
+    "Ab:7", circshift(seventh_chord, 8),
+    "Ab:maj", circshift(major_chord, 8),
+    "C:min", circshift(minor_chord, 0),
+    "Eb:7", circshift(seventh_chord, 3),
+    "Eb:maj", circshift(major_chord, 3),
+    "G:min", circshift(minor_chord, 7),
+    "Bb:7", circshift(seventh_chord, 10),
+    "Bb:maj", circshift(major_chord, 10),
+    "D:min", circshift(minor_chord, 2),
+    "F:7", circshift(seventh_chord, 5),
+    "F:maj", circshift(major_chord, 5),
+    "A:min", circshift(minor_chord, 9),
+    "C:7", circshift(seventh_chord, 0),
+    "C:maj", circshift(major_chord, 0),
+    "E:min", circshift(minor_chord, 4),
+    "G:7", circshift(seventh_chord, 7),
+    "G:maj", circshift(major_chord, 7),
+    "B:min", circshift(minor_chord, 11),
+    "D:7", circshift(seventh_chord, 2),
+    "D:maj", circshift(major_chord, 2),
+    "F#:min", circshift(minor_chord, 6),
+    "A:7", circshift(seventh_chord, 9),
+    "A:maj", circshift(major_chord, 9),
+    "C#:min", circshift(minor_chord, 1),
+    "E:7", circshift(seventh_chord, 4),
+    "E:maj", circshift(major_chord, 4),
+    "G#:min", circshift(minor_chord, 8),
+    "B:7", circshift(seventh_chord, 11),
+    "B:maj", circshift(major_chord, 11),
+    "D#:min", circshift(minor_chord, 3)
+  )
+
+key_templates <-
+  tribble(
+    ~name, ~template,
+    "Gb:maj", circshift(major_key, 6),
+    "Bb:min", circshift(minor_key, 10),
+    "Db:maj", circshift(major_key, 1),
+    "F:min", circshift(minor_key, 5),
+    "Ab:maj", circshift(major_key, 8),
+    "C:min", circshift(minor_key, 0),
+    "Eb:maj", circshift(major_key, 3),
+    "G:min", circshift(minor_key, 7),
+    "Bb:maj", circshift(major_key, 10),
+    "D:min", circshift(minor_key, 2),
+    "F:maj", circshift(major_key, 5),
+    "A:min", circshift(minor_key, 9),
+    "C:maj", circshift(major_key, 0),
+    "E:min", circshift(minor_key, 4),
+    "G:maj", circshift(major_key, 7),
+    "B:min", circshift(minor_key, 11),
+    "D:maj", circshift(major_key, 2),
+    "F#:min", circshift(minor_key, 6),
+    "A:maj", circshift(major_key, 9),
+    "C#:min", circshift(minor_key, 1),
+    "E:maj", circshift(major_key, 4),
+    "G#:min", circshift(minor_key, 8),
+    "B:maj", circshift(major_key, 11),
+    "D#:min", circshift(minor_key, 3)
+  )
+
+twenty_five <-
+  get_tidy_audio_analysis("0JOkg9ppNx6yXxVBqfDpB4") |>
+  compmus_align(sections, segments) |>
+  select(sections) |>
+  unnest(sections) |>
+  mutate(
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "mean", norm = "manhattan"
+      )
+  )
+
+twenty_five |> 
+  compmus_match_pitch_template(
+    chord_templates,         # Change to chord_templates if descired
+    method = "euclidean",  # Try different distance metrics
+    norm = "manhattan"     # Try different norms
+  ) |>
+  ggplot(
+    aes(x = start + duration / 2, width = duration, y = name, fill = d)
+  ) +
+  geom_tile() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_minimal() +
+  labs(x = "Time (s)", y = "")
+```
+
+-----------------------------------------------------------------------
+
+* For the Chordogram I have used the song Monkeys Spinning Monkeys. Although it may not sound familiar, I think anyone who has used social media in the past 5 years will recognize this sound. It is a typical TikTok background sound that is ideal for a video in which you don't want the sound taking up all the attention.
+* In the beginning two parts are repeated (the two mainly yellow blocks), which are clearly written in C-major. Then the big block around 60 seconds is where a modulation sets in. The same part that was repeated earlier is again repeated but now in G major.
 
 Conclusion
 =====================================
