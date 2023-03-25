@@ -3,6 +3,16 @@ title: "What makes a TikTok song"
 author: "Saar Schnieders"
 output:
   flexdashboard::flex_dashboard:
+    theme:
+      version: 4
+      mode: "dark"
+      primary: "#ff2d55"
+      secondary: "#3a86ff"
+      font_color: "#ffffff"
+      base_font:
+        google: Prompt
+      heading_font:
+        google: Sen
     orientation: columns
     vertical_layout: fill
 ---
@@ -15,18 +25,21 @@ library(tidyverse)
 library(spotifyr)
 library(dplyr)
 library(compmus)
+library(tidymodels)
+library(ggdendro)
+library(heatmaply)
 
-# load playlists
-billboard_2018 <- get_playlist_audio_features("", "6Qvc2MPgTjWwGuC1uSvbgu")
-billboard_2019 <- get_playlist_audio_features("", "6OapfKmVO7KhOBLBsAUcj3")
-billboard_2020 <- get_playlist_audio_features("", "3RQ0FTTe6QqiyRT7LpD9Uq")
-billboard_2021 <- get_playlist_audio_features("", "3pkikocxs7ubWxrm6JnBBV")
-billboard_2022 <- get_playlist_audio_features("", "14i68vJsrTAg2c66qBDYdA")
-tiktok_2018 <- get_playlist_audio_features("", "4IjkLsdqg38MPMCB6jTVZ8")
-tiktok_2019 <- get_playlist_audio_features("", "3Os2qwqVkreV4yfsV1VR9e")
-tiktok_2020 <- get_playlist_audio_features("", "542KyzCbLiTv3JYIA01qVw")
-tiktok_2021 <- get_playlist_audio_features("", "3rcnWnLbLdhv5ywbckRezp")
-tiktok_2022 <- get_playlist_audio_features("", "61yLxL3ZHR1uU0K893M7Gy")
+# read playlists
+billboard_2018 <- readRDS(file = "data/billboard_2018-data.RDS")
+billboard_2019 <- readRDS(file = "data/billboard_2019-data.RDS")
+billboard_2020 <- readRDS(file = "data/billboard_2020-data.RDS")
+billboard_2021 <- readRDS(file = "data/billboard_2021-data.RDS")
+billboard_2022 <- readRDS(file = "data/billboard_2022-data.RDS")
+tiktok_2018 <- readRDS(file = "data/tiktok_2018-data.RDS")
+tiktok_2019 <- readRDS(file = "data/tiktok_2019-data.RDS")
+tiktok_2020 <- readRDS(file = "data/tiktok_2020-data.RDS")
+tiktok_2021 <- readRDS(file = "data/tiktok_2021-data.RDS")
+tiktok_2022 <- readRDS(file = "data/tiktok_2022-data.RDS")
 
 # make column track.duration_s that shows track duration in seconds
 billboard <- rbind(billboard_2018, billboard_2019, billboard_2020, billboard_2021, billboard_2022) %>%
@@ -52,179 +65,47 @@ x <- c(rep("Billboard", 500), rep("TikTok", 1083))
 just_tiktok_billboard$type <- factor(x)
 ```
 
-Week 11 {.storyboard}
-=====================================
 
-### Barchart of distribution of Tempi {data-commentary-width=500}
-
-```{r}
-
-tempi <- just_tiktok_billboard %>%
-  ggplot(aes(x = tempo, fill = type)) +
-  geom_histogram() +
-  labs(x = "Tempo", 
-       y = "Count",
-       title = "Distribution of Tempi by Type") +
-  facet_wrap(~ type)
-
-ggplotly(tempi)
-```
-
------------------------------------------------------------------------
-
-* In comparison to the TikTok chart, the Billboard distribution of tempi looks relatively even, with a mode at around tempo 100 bpm.
-* TikTok has two big modes, one at around 100 bpm like the Billboard and the other around 125 bpm, significantly faster than the Billboard mode.
-* From this data I would like to conclude that TikTok songs typically have a bigger bpm than popular songs.
-
-### Tempogram of Cannibal by Kesha {data-commentary-width=500}
-
-```{r}
-cannibal <- get_tidy_audio_analysis("3JTMWdhcJPiegDSe7SvZS3")
-
-cannibal |>
-  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
-  ggplot(aes(x = time, y = bpm, fill = power)) +
-  geom_raster() +
-  scale_fill_viridis_c(guide = "none") +
-  labs(title = "Kesha - Cannibal",
-       x = "Time (s)", 
-       y = "Tempo (BPM)") +
-  theme_classic()
-```
-
------------------------------------------------------------------------
-
-* I chose the song Cannibal by Kesha, not necessarily because it was an outlier, but because it has a tempo of just below 130, which is more typical of a TikTok song.
-* The tempo throughout the song stays the same, but in certain parts the program cannot distinguish it anymore, because the beat disappears in the song at these moments. I thought this to be an interesting example, to see how the program would pick up on it.
-* You can still see certain slivers of the real tempo, but it also seems like it picks up the 3-count measure (so 3 instead of 4 counts in the same measure), which is visible at the sliver around 100 bpm.
-
-### Tempogram next to Self-Similarity Matrix of Cannibal - Kesha {data-commentary-width=500}
-
-```{r}
-cannibal_dtp <-
-  get_tidy_audio_analysis("3JTMWdhcJPiegDSe7SvZS3") |>
-  compmus_align(sections, segments) |> # Change `bars`
-  select(sections) |> # in all three
-  unnest(sections) |> # of these lines.
-  mutate(
-    pitches =
-      map(segments,
-          compmus_summarise, pitches,
-          method = "rms", norm = "euclidean" # Change summary & norm.
-      )
-  ) |>
-  mutate(
-    timbre =
-      map(segments,
-          compmus_summarise, timbre,
-          method = "rms", norm = "euclidean" # Change summary & norm.
-      )
-  )
-
-cannibal_dtp <- cannibal_dtp |>
-  compmus_self_similarity(pitches, "cosine") |>
-  ggplot(
-    aes(
-      x = xstart + xduration / 2,
-      width = xduration,
-      y = ystart + yduration / 2,
-      height = yduration,
-      fill = d
-    )
-  ) +
-  geom_tile() +
-  coord_equal() +
-  labs(x = "cannibal", y = "cannibal", fill = "distance") +
-  theme_minimal() +
-  scale_fill_viridis_c()
-
-cannibal_tempo <- get_tidy_audio_analysis("3JTMWdhcJPiegDSe7SvZS3")
-
-cannibal_tempo <- cannibal_tempo |>
-  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
-  ggplot(aes(x = time, y = bpm, fill = power)) +
-  geom_raster() +
-  scale_fill_viridis_c(guide = "none") +
-  labs(title = "Kesha - Cannibal",
-       x = "Time (s)", 
-       y = "Tempo (BPM)") +
-  theme_classic()
-
-subplot(ggplotly(cannibal_tempo),
-        ggplotly(cannibal_dtp))  
-```
-
-***
-
-**Structure of the song**
-
-0 - 7 intro of the song: Starts of with a strong beat.
-
-7 - 21 verse 1: Kesha starts singing over the beat, no other instruments or sounds are added.
-
-22 - 37: intro to the chorus: Kesha's voice is toned down a bit, it sounds like the autotune is more apparent here. Also synthesizers are added.
-
-38 - 51: chorus part 1: The beat disappears, the synthesizers are tuned up. Kesha is the centre here with some long high notes.
-
-52 - 66: chorus part 2: Chorus part 1 repeats, but the beat reappears.
-
-67 - 80: verse 2: Sounds very similar to the first refrain (7-21), the synthesizers are a bit more apparent here, but the centre of the refrain is still Kesha and the beat.
-
-81 - 125: chorus: The intro to the chorus and the two parts of the chorus are repeated. No noticeable difference.
-126 - 140: bridge part 1: The beat is singing, Kesha's voice is really the centre like in no other part of the song.
-
-141 - 154: bridge part 2: The beat reappears again, Kesha repeats what she did in the first part of the bridge. At the end a synthesizer is gearing us up for the last time we here the chorus.
-
-155 - 184: chorus: Chorus repeats again. Some adlibs are added for an extra boom moment.
-
-185 - 194: outro: The outro sounds very similar to the intro, with a strong beat to the center of it. Kesha is saying some stuff through it and laughs. The song ends.
-
-**Comparison**
-
-* In the tempogram, the part where the chorus starts is very visible, because here the beat ceases for a few seconds at around 38 seconds in, this is seen again at around 81 seconds and 155 seconds, just as it is in the song.
-
-* This is less apparent in the self-similarity matrix, also because the sections are not fully alligned with the sections I just described. 
-
-* Up until the bridge there are two moments in which the beat disappears, the first moment is very clear in the matrix, with a section from 30 to 45 seconds. The difference between the other sections that do contain a beat is much bigger. The second moment is less clear, but is at the section that is from 82 to 112 seconds. This sections has the smallest difference between the first section in which the beat disappears. But because the section also contains a part of the chorus in which the beat reappears the structure is less clear.
-
-* The biggest difference is seen in the last time the chorus is sung, after the bridge. The section that best shows this is from 164 to 176 seconds. The difference looks very similar to the difference of the first section.
-
-Introduction {data-navmenu=Introduction}
-=====================================
-
-Introduction {data-width=600}
------------------------------------------------------------------------
-
-TikTok is one of the most popular social media apps of today and had a big impact on how we navigate our online life and also on music.
-
-In this dashboard I will visualize how music changed as TikTok got more popular. My corpus contains Billboard Year-End Hottest Singles from 2018 until 2022 and the most popular TikTok sounds per year. I would like to research three things:
-
-1. What characterizes a TikTok song. 
-2. To what extent popular music and TikTok music are similar.
-3. How TikTok music differs from popular music.
-
-A noteworthy example I would like to research is the song 'Running up the Hills" by Kate Bush, a song originally from the 1980's, that was repopularized by the series Stranger Things and Tiktok, does that fit in with the overall trend?
-
-Spotify {data-width=400}
------------------------------------------------------------------------
-
-<iframe src="https://open.spotify.com/embed/playlist/3yn3Ng6rgPKAoW5KV79GGj?utm_source=generator" width="50%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
-
-<iframe src="https://open.spotify.com/embed/playlist/2Zf8RxLhxAot2yKfn8G77v?utm_source=generator&theme=0" width="50%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
-
-My data {data-navmenu=Introduction}
+Introduction
 =====================================
 
 Column {data-width=500}
 -----------------------------------------------------------------------
 
-### My data
+### Introduction
 
-For my datasets I have used the Billboard Year-End Hot 100 singles of the years 2016 to 2022 for the popular songs. For the TikTok charts I have used the website https://tokboard.com and the datasets of the user Sveta151 on kaggle (https://www.kaggle.com/sveta151).
+TikTok is one of the most popular social media apps of today and has a big impact on how we navigate our online life and also on music.
+
+In this dashboard I will visualize how music changed as TikTok got more popular. My corpus contains Billboard Year-End Hottest Singles from 2018 until 2022 and the most popular TikTok sounds per year. I would like to research three things:
+
+1. What characterizes a TikTok song.
+2. To what extent popular music and TikTok music are similar.
+3. How TikTok music differs from popular music.
+
+A noteworthy example I would like to research is the song 'Running up the Hills" by Kate Bush, a song originally from the 1980's, that was repopularized by the series Stranger Things and Tiktok, does that fit in with the overall trend?
+
+Column {data-width=250}
+-----------------------------------------------------------------------
+
+### TikTok playlist
+<iframe src="https://open.spotify.com/embed/playlist/3yn3Ng6rgPKAoW5KV79GGj?utm_source=generator" width="100%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
+
+Column {data-width=250}
+-----------------------------------------------------------------------
+
+### Billboard playlist
+<iframe src="https://open.spotify.com/embed/playlist/2Zf8RxLhxAot2yKfn8G77v?utm_source=generator&theme=0" width="100%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
+
+Data {.storyboard}
+=====================================
+
+### Data {data-commentary-width=650}
+
+For the datasets I have used the Billboard Year-End Hot 100 singles of the years 2016 to 2022 for the popular songs. For the TikTok charts I have used the website https://tokboard.com and the datasets of the user Sveta151 on kaggle (https://www.kaggle.com/sveta151).
 
 For the popular songs I have used the Billboard Year-End Hot 100 singles of each year. Each playlist contains a 100 singles, so in total my corpus contains 500 'popular' songs.
 
-For the TikTok data this is a bit more complicated. I could not find a lot of reliable sources for what sounds were the most popular per year or per month. From september 2018 to june 2021 I found the website https://tokboard.com. The 100 most popular sound were shown per month and I added all sounds that were songs to the corpus. There was no data after june 2021, so I complemented the _tokboard_-data with a dataset I found on kaggle by the user Sveta151 (https://www.kaggle.com/sveta151). For the previous years her data was quite similar to mine, so I complemented the years 2021 and 2022 with her playlists.
+For the TikTok data this is a bit more complicated. I could not find a lot of reliable sources for what sounds were the most popular per year or per month. From September 2018 to June 2021 I found the website https://tokboard.com. The 100 most popular sound were shown per month and I added all sounds that were songs to the corpus. There was no data after june 2021, so I complemented the _tokboard_-data with a dataset I found on kaggle by the user Sveta151 (https://www.kaggle.com/sveta151). For the previous years her data was quite similar to mine, so I complemented the years 2021 and 2022 with her playlists.
 
 To finish it off, to get a more coherent view of TikTok and popular songs, I deleted all songs in the TikTok dataframe that were also present in the Billboard dataframe. In this way, songs that got popular on TikTok because they were already popular will not show in the visualizations.
 
@@ -232,58 +113,76 @@ To finish it off, to get a more coherent view of TikTok and popular songs, I del
 
 We can see that the amount of songs per type is not equally distributed, with the Billboard containing 100 songs per year, every year and TikTok containing in between 76 and 357 songs per year. I have made sure that the songs are as representable as possible for each type and year, so for now I don't forsee big problems resulting from this inequality.
 
-**Energy and Popularity in 2022**
-
-As expected we can see that the Billboard songs are more popular on average than the TikTok songs. When we look at danceability we can see the a very similar distribution for the more popular songs for the Billboard as well as the TikTok plot. But for the less popular TikTok songs, the energy seems to be higher on average.
-
-**Speechiness and tempo**
-
-For the speechiness and tempo we can see that these are pretty equally distributed among the two different types. TikTok seems to have a slightly bigger distribution, but that is mostly because TikTok has almost three times as many data points, so that can probably be attributed to that.
-
-Distributions of dataset {.tabset}
 -----------------------------------------------------------------------
 
-### Songs per type
-
 ```{r}
-amount <- ggplot(just_tiktok_billboard, aes(x = year, fill = type)) +
-  geom_bar(position = "dodge") +
-  labs(title = "TikTok is overrepresented in the corpus",
-       subtitle = "Amount of songs per type per year in corpus")
+amount <- readRDS(file = "data/amount-plot.RDS")
 
 ggplotly(amount)
 ```
 
-### Energy and Popularity in 2022
+### On what variables do TikTok and Billboard songs vary the most?
 
 ```{r}
-information <- just_tiktok_billboard %>%
-  rename(track = track.name,
-         popularity = track.popularity) %>%
-  filter(year == 2022) %>%
-  ggplot(aes(x = popularity, y = energy, color = type, key = track)) +
-  labs(x = "Popularity",
-       y = "Energy",
-       title = "Distribution of Popularity and Energy per type in the year 2022") +
-  geom_point(alpha = 0.5) +
-  facet_wrap(~ type)
+workflow <- readRDS(file = "data/tiktok_billboard_2022_workflow-plot.RDS")
 
-ggplotly(information)
+ggplotly(workflow)
 ```
 
-### Speechiness and Tempo
+-----------------------------------------------------------------------
+
+For this plot I compared the TikTok and the Billboard playlist of 2022. 
+
+The variable that is of biggest importance when distinghuising in between songs from the two playlists is the duration. It is notable that the timbre-components seem to be relatively similar. The biggest differences lay in the variables measured by Spotify, like the valence, speechiness and danceability.
+
+In the plots in the next few tabs, we will take a closer look on these variables in the two playlists.
+
+### Duration and Tempo
+
 ```{r}
-information <- just_tiktok_billboard %>%
-  rename(track = track.name) %>%
-  ggplot(aes(x = speechiness, y = tempo, color = type, key = track)) +
-  labs(x = "Speechiness",
-       y = "Tempo",
-       title = "Distribution of Speechiness and Tempo per type") +
-  geom_point(alpha = 0.5) +
-  facet_wrap(~ type)
-  
-ggplotly(information)
+duration_tempo <- readRDS(file = "data/duration_tempo-plot.RDS")
+
+ggplotly(duration_tempo)
 ```
+
+-----------------------------------------------------------------------
+
+Here I have plotted the track duration against the tempo, because these were some of the most defining variables for these two playlists.
+
+**Tempo**
+
+In the TikTok plot we can already see a big cluster around the tempo of 125 bpm. In the Billboard there seems to be a slight clustering around 110 bpm, but definitely not as significant as with the TikTok playlist.
+
+**Duration**
+
+For the duration there is not a clustering notable like for the Tempo, but we can see that the TikTok distribution is just slightly lower than the Billboard distribution. In the next plot I will zoom in on this.
+
+### Duration
+
+```{r}
+track_duration <- readRDS(file = "data/track_duration-plot.RDS")
+
+ggplotly(track_duration)
+```
+
+-----------------------------------------------------------------------
+
+TEKST
+
+### Danceability
+
+```{r}
+danceability <- readRDS(file = "data/danceability-plot.RDS")
+
+ggplotly(danceability)
+```
+
+-----------------------------------------------------------------------
+
+* We can see that the mean danceability is higher for popular TikTok songs than for songs that were in the Billboard Hot 100.
+* It is also notable that the trend in the last three years are very similar for both chart-types.
+* This last point can be contributed to the fact that TikTok gained the most popularity in 2020 and it could be said that popular music and TikTok trends had a bigger influence on each other.
+
 
 Chromagrams
 =====================================
@@ -292,27 +191,9 @@ _Running up that Hill_ Chromagram
 -----------------------------------------------------------------------
 
 ```{r}
-hills <-
-  get_tidy_audio_analysis("75FEaRjZTKLhTrFGsfMUXR") |>
-  select(segments) |>
-  unnest(segments) |>
-  select(start, duration, pitches)
+hills_chromagram <- readRDS(file = "data/hills_chromagram-plot.RDS")
 
-hills |>
-  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) |>
-  compmus_gather_chroma() |> 
-  ggplot(
-    aes(
-      x = start + duration / 2,
-      width = duration,
-      y = pitch_class,
-      fill = value
-    )
-  ) +
-  geom_tile() +
-  labs(x = "Time (s)", y = NULL, fill = "Magnitude", title = "Kate Bush - Running Up That Hill (A Deal With God)") +
-  theme_minimal() +
-  scale_fill_viridis_c()
+ggplotly(hills_chromagram)
 ```
 
 Explanation
@@ -320,8 +201,11 @@ Explanation
 
 * I'm not yet sure what I could say with a chromagram, but a lot of C's on this one.
 
-DTP of popular TikTok song
+Self-similarity matrix
 =====================================
+
+_Unholy_ Self-similarity matrix
+-----------------------------------------------------------------------
 
 ```{r}
 unholy <-
@@ -358,72 +242,6 @@ compmus_long_distance(
 * For the other DTP I want to find the most popular song of the TikTok songs that is not in the Billboard charts and see how that compares to the DTP already shown. I just don't know yet how to find the first one.
 * I have to say that with this visualization I'm very open to feedback and tips on what things I could find, because I'm not very sure what I'm looking for and how to look for it.
 
-Songs are getting shorter
-=====================================
-
------------------------------------------------------------------------
-
-```{r}
-track_duration_table <- billboard %>%
-  group_by(year) %>%
-  summarise(median_track_duration_s = median(track.duration_s),
-            mean_track_duration_s = mean(track.duration_s))
-
-track_duration <- ggplot(track_duration_table, aes(year, mean_track_duration_s, group=1)) +
-  geom_line() +
-  geom_point() +
-  theme_bw() +
-  labs(
-    x = "Year",
-    y = "Mean track duration in seconds",
-    title = "Popular songs have gotten shorter",
-    subtitle = "The track duration of the most popular songs in 2016 and 2022"
-  )
-
-ggplotly(track_duration)
-```
-
------------------------------------------------------------------------
-
-* We can see that the track duration has significantly gone down since TikTok got popular. TikTok started in 2017, but had already gained significant populairty in 2019 and this has since then only been rising.
-* With the rise of TikTok the attention span of teenagers has been going down. This also includes songs, so to become popular, the song should not be too long, for the attention span of most listeners are not this long anymore.
-
-
-Danceability {.storyboard}
-=====================================
-
-### Danceability seems to follow a trend in both the TikTok and the Billboard chart
-
-```{r}
-# make a table that shows mean danceability per year
-danceability_table <- just_tiktok_billboard %>%
-  group_by(type, year) %>%
-  summarise(mean_danceability = mean(danceability))
-
-# plot mean danceability per year
-danceability <- ggplot(danceability_table, aes(year, mean_danceability, color = type)) +
-  geom_line(aes(group = type)) +
-  geom_hline(yintercept = mean(tiktok$danceability), linetype = "dotted", color = "#00BFC4", size = 1) +
-  annotate("text", x=2.5, y=mean(tiktok$danceability) + 0.003, label="Mean TikTok", size=3) +
-  geom_hline(yintercept = mean(billboard$danceability), linetype = "dotted", color = "#F8766D", size = 1) +
-  annotate("text", x=4, y=mean(billboard$danceability) + 0.003, label="Mean Billboard", size=3) +
-  labs(
-    x = "Year",
-    y = "Mean danceability",
-    title = "Danceability seems to follow a trend in both charts",
-    subtitle = "From 2020 onwards TikTok and Billboard follow the same trend in regards to danceability"
-  )
-
-# show plot
-ggplotly(danceability)
-```
-
------------------------------------------------------------------------
-
-* We can see that the mean danceability is higher for popular TikTok songs than for songs that were in the Billboard Hot 100. 
-* It is also notable that the trend in the last three years are very similar for both chart-types.
-* This last point can be contributed to the fact that TikTok gained the most popularity in 2020 and it could be said that popular music and TikTok trends had a bigger influence on each other.
-
 Keys {.storyboard}
 =====================================
 
@@ -438,7 +256,7 @@ keys <- just_tiktok_billboard %>%
   mutate(frequency = count / sum(count)) %>%
   ggplot(aes(x = key_name, frequency, fill = type), stat = "count") +
   geom_col(position = "dodge") +
-  labs(x = "Keys", 
+  labs(x = "Keys",
        y = "Frequency Ratio",
        title = "Distribution Across Keys by year by type") +
   facet_wrap(~ year)
@@ -556,7 +374,7 @@ twenty_five <-
       )
   )
 
-twenty_five |> 
+twenty_five |>
   compmus_match_pitch_template(
     chord_templates,         # Change to chord_templates if descired
     method = "euclidean",  # Try different distance metrics
@@ -575,6 +393,82 @@ twenty_five |>
 
 * For the Chordogram I have used the song Monkeys Spinning Monkeys. Although it may not sound familiar, I think anyone who has used social media in the past 5 years will recognize this sound. It is a typical TikTok background sound that is ideal for a video in which you don't want the sound taking up all the attention.
 * In the beginning two parts are repeated (the two mainly yellow blocks), which are clearly written in C-major. Then the big block around 60 seconds is where a modulation sets in. The same part that was repeated earlier is again repeated but now in G major.
+
+Tempo {.storyboard}
+=====================================
+
+### Barchart of distribution of Tempi {data-commentary-width=500}
+
+```{r}
+tempi <- readRDS(file = "data/tempi-plot.RDS")
+
+ggplotly(tempi)
+```
+
+-----------------------------------------------------------------------
+
+* In comparison to the TikTok chart, the Billboard distribution of tempi looks relatively even, with a mode at around tempo 100 bpm.
+* TikTok has two big modes, one at around 100 bpm like the Billboard and the other around 125 bpm, significantly faster than the Billboard mode.
+* From this data I would like to conclude that TikTok songs typically have a bigger bpm than popular songs.
+
+### Tempogram of Cannibal by Kesha {data-commentary-width=500}
+
+```{r}
+cannibal_tempogram <- readRDS(file = "data/cannibal_tempogram-plot.RDS")
+
+ggplotly(cannibal_tempogram)
+```
+
+-----------------------------------------------------------------------
+
+* I chose the song Cannibal by Kesha, not necessarily because it was an outlier, but because it has a tempo of just below 130, which is more typical of a TikTok song.
+* The tempo throughout the song stays the same, but in certain parts the program cannot distinguish it anymore, because the beat disappears in the song at these moments. I thought this to be an interesting example, to see how the program would pick up on it.
+* You can still see certain slivers of the real tempo, but it also seems like it picks up the 3-count measure (so 3 instead of 4 counts in the same measure), which is visible at the sliver around 100 bpm.
+
+### Tempogram next to Self-Similarity Matrix of Cannibal - Kesha {data-commentary-width=600}
+
+```{r}
+cannibal_dtp <- readRDS(file = "data/cannibal_dtp-plot.RDS")
+
+subplot(ggplotly(cannibal_tempogram),
+        ggplotly(cannibal_dtp),
+        nrows = 2)
+```
+
+***
+
+**Structure of the song**
+
+0 - 7 intro of the song: Starts of with a strong beat.
+
+7 - 21 verse 1: Kesha starts singing over the beat, no other instruments or sounds are added.
+
+22 - 37: intro to the chorus: Kesha's voice is toned down a bit, it sounds like the autotune is more apparent here. Also synthesizers are added.
+
+38 - 51: chorus part 1: The beat disappears, the synthesizers are tuned up. Kesha is the centre here with some long high notes.
+
+52 - 66: chorus part 2: Chorus part 1 repeats, but the beat reappears.
+
+67 - 80: verse 2: Sounds very similar to the first refrain (7-21), the synthesizers are a bit more apparent here, but the centre of the refrain is still Kesha and the beat.
+
+81 - 125: chorus: The intro to the chorus and the two parts of the chorus are repeated. No noticeable difference.
+126 - 140: bridge part 1: The beat is singing, Kesha's voice is really the centre like in no other part of the song.
+
+141 - 154: bridge part 2: The beat reappears again, Kesha repeats what she did in the first part of the bridge. At the end a synthesizer is gearing us up for the last time we here the chorus.
+
+155 - 184: chorus: Chorus repeats again. Some adlibs are added for an extra boom moment.
+
+185 - 194: outro: The outro sounds very similar to the intro, with a strong beat to the center of it. Kesha is saying some stuff through it and laughs. The song ends.
+
+**Comparison**
+
+* In the tempogram, the part where the chorus starts is very visible, because here the beat ceases for a few seconds at around 38 seconds in, this is seen again at around 81 seconds and 155 seconds, just as it is in the song.
+
+* This is less apparent in the self-similarity matrix, also because the sections are not fully alligned with the sections I just described.
+
+* Up until the bridge there are two moments in which the beat disappears, the first moment is very clear in the matrix, with a section from 30 to 45 seconds. The difference between the other sections that do contain a beat is much bigger. The second moment is less clear, but is at the section that is from 82 to 112 seconds. This sections has the smallest difference between the first section in which the beat disappears. But because the section also contains a part of the chorus in which the beat reappears the structure is less clear.
+
+* The biggest difference is seen in the last time the chorus is sung, after the bridge. The section that best shows this is from 164 to 176 seconds. The difference looks very similar to the difference of the first section.
 
 Conclusion
 =====================================

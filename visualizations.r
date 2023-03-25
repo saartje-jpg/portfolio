@@ -4,6 +4,9 @@ library(spotifyr)
 library(dplyr)
 library(compmus)
 library(plotly)
+library(tidymodels)
+library(ggdendro)
+library(heatmaply)
 
 # load playlists
 billboard_2018 <- get_playlist_audio_features("", "6Qvc2MPgTjWwGuC1uSvbgu")
@@ -44,63 +47,33 @@ just_tiktok_billboard$type <- factor(x)
 ###########################################################################
 ###########################################################################
 
-# average tiktok songs
-tempi <- just_tiktok %>%
-  filter(tempo > 120, tempo < 130,
-         energy > 0.60, energy < 0.75,
-         track.duration_s > 160, track.duration_s < 210,
-         danceability > 0.68, danceability < 0.80,
-         valence > 0.40, valence < 0.65
-         )
+### Danceability seems to follow a trend in both the TikTok and the Billboard chart
 
-cannibal_dtp <-
-  get_tidy_audio_analysis("3JTMWdhcJPiegDSe7SvZS3") |>
-  compmus_align(sections, segments) |> # Change `bars`
-  select(sections) |> # in all three
-  unnest(sections) |> # of these lines.
-  mutate(
-    pitches =
-      map(segments,
-          compmus_summarise, pitches,
-          method = "rms", norm = "euclidean" # Change summary & norm.
-      )
-  ) |>
-  mutate(
-    timbre =
-      map(segments,
-          compmus_summarise, timbre,
-          method = "rms", norm = "euclidean" # Change summary & norm.
-      )
-  )
+# make a table that shows mean danceability per year
+track_duration_table <- just_tiktok_billboard %>%
+  rename(track_duration = track.duration_s) %>%
+  group_by(type, year) %>%
+  summarise(mean_track_duration = mean(track_duration))
 
-cannibal_dtp <- cannibal_dtp |>
-  compmus_self_similarity(pitches, "cosine") |>
-  ggplot(
-    aes(
-      x = xstart + xduration / 2,
-      width = xduration,
-      y = ystart + yduration / 2,
-      height = yduration,
-      fill = d
-    )
+# plot mean danceability per year
+track_duration <- ggplot(track_duration_table, aes(year, mean_track_duration, color = type)) +
+  geom_line(aes(group = type)) +
+  geom_hline(yintercept = mean(tiktok$track.duration_s), linetype = "dotted", color = "#00BFC4", size = 0.5) +
+  annotate("text", x=1, y=mean(tiktok$track.duration_s) + 1, label="Mean TikTok", size=3) +
+  geom_hline(yintercept = mean(billboard$track.duration_s), linetype = "dotted", color = "#F8766D", size = 0.5) +
+  annotate("text", x=4, y=mean(billboard$track.duration_s) + 1, label="Mean Billboard", size=3) +
+  labs(
+    x = "Year",
+    y = "Mean track duration",
+    title = "Danceability seems to follow a trend in both charts",
+    subtitle = "From 2020 onwards TikTok and Billboard follow the same trend in regards to danceability"
   ) +
-  geom_tile() +
-  coord_equal() +
-  labs(x = "cannibal", y = "cannibal", fill = "distance") +
-  theme_minimal() +
-  scale_fill_viridis_c()
+  theme_tiktok()
 
-cannibal_tempo <- get_tidy_audio_analysis("3JTMWdhcJPiegDSe7SvZS3")
+# show plot
+ggplotly(track_duration)
 
-cannibal_tempo <- cannibal_tempo |>
-  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
-  ggplot(aes(x = time, y = bpm, fill = power)) +
-  geom_raster() +
-  scale_fill_viridis_c(guide = "none") +
-  labs(title = "Ke$ha - Cannibal",
-       x = "Time (s)", 
-       y = "Tempo (BPM)") +
-  theme_classic()
 
-subplot(ggplotly(cannibal_tempo),
-        ggplotly(cannibal_dtp))  
+
+
+
