@@ -337,7 +337,8 @@ tempi <- just_tiktok_billboard %>%
   labs(x = "Tempo", 
        y = "Count",
        title = "Distribution of Tempi by Type") +
-  facet_wrap(~ type)
+  facet_wrap(~ type) +
+  theme_tiktok()
 
 saveRDS(object = tempi, file = "data/tempi-plot.RDS")
 

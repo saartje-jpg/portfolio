@@ -28,6 +28,8 @@ library(compmus)
 library(tidymodels)
 library(ggdendro)
 library(heatmaply)
+library(ggplot2)
+library(cowplot)
 
 # read playlists
 billboard_2018 <- readRDS(file = "data/billboard_2018-data.RDS")
@@ -63,6 +65,37 @@ just_tiktok <- tiktok[!(tiktok$track.uri %in% billboard$track.uri),]
 just_tiktok_billboard <- rbind(billboard, just_tiktok)
 x <- c(rep("Billboard", 500), rep("TikTok", 1083))
 just_tiktok_billboard$type <- factor(x)
+
+tiktok_colors <- c("#010101", "#FF2D55", "#FDFDFD", "#3A3A3C")
+
+# Define the Prompt and Sen fonts
+prompt_font <- "Prompt"
+sen_font <- "Sen"
+
+# Define the TikTok theme with the custom fonts
+theme_tiktok <- function(base_size = 12) {
+  theme(
+    text = element_text(family = prompt_font, size = base_size),
+    panel.background = element_rect(fill = tiktok_colors[3]),
+    plot.background = element_rect(fill = tiktok_colors[3]),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = tiktok_colors[1], size = 0.5),
+    axis.ticks = element_line(color = tiktok_colors[1], size = 0.2),
+    axis.text = element_text(color = tiktok_colors[1], family = sen_font),
+    legend.background = element_rect(fill = tiktok_colors[3], size = 0.5),
+    legend.text = element_text(color = tiktok_colors[1], family = sen_font),
+    legend.key = element_rect(fill = tiktok_colors[3], color = tiktok_colors[1], size = 0.5),
+    plot.title = element_text(size = rel(1.2), color = tiktok_colors[1],
+                              family = prompt_font, hjust = 0, vjust = 1,
+                              margin = margin(b = 10, l = 0)),
+    plot.subtitle = element_text(size = rel(1), color = tiktok_colors[1],
+                                 family = prompt_font, hjust = 0.5, margin = margin(t = 10)),
+    plot.caption = element_text(size = rel(0.8), color = tiktok_colors[1],
+                                family = prompt_font, hjust = 1, margin = margin(t = 10, r = 0)),
+    plot.margin = unit(c(50, 10, 0, 10), "pt")
+  )
+}
 ```
 
 
@@ -82,7 +115,15 @@ In this dashboard I will visualize how music changed as TikTok got more popular.
 2. To what extent popular music and TikTok music are similar.
 3. How TikTok music differs from popular music.
 
-A noteworthy example I would like to research is the song 'Running up the Hills" by Kate Bush, a song originally from the 1980's, that was repopularized by the series Stranger Things and Tiktok, does that fit in with the overall trend?
+__Computational Analysis__
+I think that for my corpus the comparisons of the spotify analysis features will be most useful. In both playlists there are a lot of different genres, which is why I don't think the timbre-components will give us good comparisons.
+
+I would also like to see how both types of music changed over the years. I don't think that we will be able to draw a conclusions from the changes over the years alone, but we can speculate about the role of TikTok in those changes.
+
+If I analyse just one song, this will be mostly handpicked with accordance to the data.
+
+__Expectations__
+I don't expect to find very big difference, because I expect that there is a lot of overlap between the two playlists. I do expect the TikTok playlist to be more versatile and also more danceable.
 
 Column {data-width=250}
 -----------------------------------------------------------------------
@@ -121,6 +162,56 @@ amount <- readRDS(file = "data/amount-plot.RDS")
 ggplotly(amount)
 ```
 
+### Can AI predict the different categories? {data-commentary-width=650}
+
+I was curious to see whether AI could notice the differences between the different playlists. I trained three different models on three different subsets of the playlists:
+
+1. The difference between Billboard and TikTok songs in 2022
+2. The difference between Billboard songs from 2018 and 2022
+3. The difference between TikTok songs from 2018 and 2022
+
+In the plot next to here you can see how the models classified each of the songs.
+
+__1. The difference between Billboard and TikTok songs in 2022__
+
+As we have seen just before, there are more TikTok than Billboard songs, this makes for an uneven distribution, which can also be seen in the classification model. This unevenness might have made the results less reliable.
+
+However, uneven or not, the model does very poorly on the classification task. The precision for the Billboard category is only 32%. The predictions for TikTok songs are a bit better, with a precision rate of 73%. The precision is more than twice as high for TikTok songs, but so is the amount of TikTok songs in this subsection. 
+
+Based on these findings we could conclude that the model classifies TikTok songs better than Billboard songs, but because of what I just discussed I think it is unfair to conclude this.
+
+__2. The difference between Billboard songs from 2018 and 2022__
+
+This is the only subset in which the distribution is equalized over the two years. Both playlists only contain 100 songs. The precision of Billboard songs from 2022 is slightly higher with 60% than the precision of Billboard songs in 2018, which is 62%. 
+
+Although these rates are still low, the classifier does way better here than on the previous task. In later tabs we will research what makes these songs different from each other.
+
+__3. The difference between TikTok songs from 2018 and 2022__
+
+The last subsets also have a very unequal distribution with there being 61 TikTok songs from 2018 in comparison to 214 TikTok songs from 2022. This unneveness shows again.
+
+The precision rate of TikTok songs from 2018 is only 31%, the lowest rate we have seen thusfar. This compares to the precision rate of 79% of TikTok songs from 2022. This difference is again very close to the ratio of songs available of each category. 
+
+Again, I will not draw any conclusions based on these results.
+
+-----------------------------------------------------------------------
+
+```{r}
+tiktok_billboard_2022_heatmap <- readRDS(file = "data/tiktok_billboard_2022_heatmap-plot.RDS")
+tiktok_2018_2022_heatmap <- readRDS(file = "data/tiktok_2018_2022_heatmap-plot.RDS")
+billboard_2018_2022_heatmap <- readRDS(file = "data/billboard_2018_2022_heatmap-plot.RDS")
+
+subplot(tiktok_billboard_2022_heatmap,
+        billboard_2018_2022_heatmap,
+        tiktok_2018_2022_heatmap,
+        nrows = 3,
+        shareX = TRUE,
+        shareY = TRUE) %>%
+  layout(xaxis = list(title = 'True Value'),
+         yaxis = list(title = 'Prediction'))
+
+```
+
 ### On what variables do TikTok and Billboard songs vary the most?
 
 ```{r}
@@ -131,9 +222,9 @@ ggplotly(workflow)
 
 -----------------------------------------------------------------------
 
-For this plot I compared the TikTok and the Billboard playlist of 2022. 
+For this plot I compared the TikTok and the Billboard playlist of 2022. Although we saw in the classification task that it is hard for a model to predict the difference, I still was curious to see on based on what characteristics it tried to distinguish.
 
-The variable that is of biggest importance when distinghuising in between songs from the two playlists is the duration. It is notable that the timbre-components seem to be relatively similar. The biggest differences lay in the variables measured by Spotify, like the valence, speechiness and danceability.
+The variable that is of biggest importance when distinguishing in between songs from the two playlists is the duration. It is notable that the timbre-components seem to be relatively similar. The biggest differences lay in the variables measured by Spotify, like the valence, speechiness and danceability.
 
 In the plots in the next few tabs, we will take a closer look on these variables in the two playlists.
 
@@ -167,7 +258,11 @@ ggplotly(track_duration)
 
 -----------------------------------------------------------------------
 
-TEKST
+To zoom in on the last plot a bit, you can see that the Duration of both Billboard songs and TikTok songs have gone down over the years, with the average TikTok song being below 3 minutes in the last year.
+
+With its short videos that can be scrolled through on demand, the average attention span has become shorter since TikTok came on the market. An explanation for the length of the songs could be, that people simply don't listen through an entire song.
+
+A thing that comes with this trend is that the bridge in pop songs seems to be disappearing, but we will look at that later in the portfolio.
 
 ### Danceability
 
@@ -187,60 +282,94 @@ ggplotly(danceability)
 Chromagrams
 =====================================
 
-_Running up that Hill_ Chromagram
+Sicko Mode by Travis Scott Chromagram
 -----------------------------------------------------------------------
 
-```{r}
-hills_chromagram <- readRDS(file = "data/hills_chromagram-plot.RDS")
+### Sicko Mode by Travis Scott Chromagram
 
-ggplotly(hills_chromagram)
+```{r}
+readRDS(file = "data/sicko_mode_chromagram-plot.RDS")
 ```
 
 Explanation
 -----------------------------------------------------------------------
 
-* I'm not yet sure what I could say with a chromagram, but a lot of C's on this one.
+### Explanation
 
-Self-similarity matrix
+It took me a very long time to find a song that would be interesting for a chromagram, mainly because in the last few years modulation are hardly used anymore. The only song I could find was Sicko Mode by Travis Scott.
+
+In this song there are two modulations, that are shown with the red lines. The song almost feels like three different songs in one, except for modulations there are also tempo changes in these parts.
+
+Reasoning behind why modulations are less used is because hiphop is more popular now than ever and here tempo changes are more important than the keys. However, this all remains speculation, because it is outside of the scope of this research.
+
+Bridge {.storyboard}
 =====================================
 
-_Unholy_ Self-similarity matrix
------------------------------------------------------------------------
+### abcdefu by GAYLE and the disappearance of the bridge {data-commentary-width=500}
 
 ```{r}
-unholy <-
-  get_tidy_audio_analysis("3nqQXoyQOWXiESFLlDF1hG") |>
-  select(segments) |>
-  unnest(segments) |>
-  select(start, duration, pitches)
-
-compmus_long_distance(
-  unholy |> mutate(pitches = map(pitches, compmus_normalise, "chebyshev")),
-  unholy |> mutate(pitches = map(pitches, compmus_normalise, "chebyshev")),
-  feature = pitches,
-  method = "euclidean"
-) |>
-  ggplot(
-    aes(
-      x = xstart + xduration / 2,
-      width = xduration,
-      y = ystart + yduration / 2,
-      height = yduration,
-      fill = d
-    )
-  ) +
-  geom_tile() +
-  coord_equal() +
-  labs(x = "Unholy", y = "Unholy", fill = "distance") +
-  theme_minimal() +
-  scale_fill_viridis_c()
+readRDS(file = "data/abcdefu_ssm-plot.RDS")
 ```
 
 -----------------------------------------------------------------------
 
-* This is a DTP of the most popular song in the entire database: Unholy by Sam Smith and Kim Petras. You can clearly see the bridge just after second 100 that clearly clashes with the rest of the song (as the distance is the biggest in this part). But overall the song is apparently very similar to itself in most parts.
-* For the other DTP I want to find the most popular song of the TikTok songs that is not in the Billboard charts and see how that compares to the DTP already shown. I just don't know yet how to find the first one.
-* I have to say that with this visualization I'm very open to feedback and tips on what things I could find, because I'm not very sure what I'm looking for and how to look for it.
+abcdefu by GAYLE is one of the biggest TikTok hits of 2022 and it fits in with a trend that is seen more often in recent pop-songs: the disappearance of the bridge.
+
+__Structure of the song__
+
+0 - 16 : The intro of the song, has the same melody as the chorus, but without all the instruments behind it.
+
+17 - 61: The verse and the intro to the chorus. Some guitar and drums join.
+
+62 - 89: The chorus. The instrumentals become heavier and the catchphrase that became popular on TikTok can be heard. ("abcdefu")
+
+90 - 116: The second verse and intro the the chorus. Sounds very similar to the first verse, but is shorter.
+
+117 - 151: The chorus. There are no noticable differences in comparison to the first time the chorus played.
+
+152 - 168: Outro, the chorus but without all the instrumentals, similar to the intro.
+
+__Analysis__
+
+The song doesn't have a lot of strong musical elements that make it stand out. It is mostly the lyrics that defines the song:
+
+_Fuck you and your mom and your sister and your job_
+
+_And your broke-ass car and that shit you call art_
+
+It is also very clear from the SSM that the song doesn't have a bridge. This is what adds power to the song, it is straight to the point and doesn't need a bridge to add more tension. 
+
+### Shallow and an example of a bridge {data-commentary-width=500}
+
+```{r}
+readRDS(file = "data/shallow_ssm-plot.RDS")
+```
+
+-----------------------------------------------------------------------
+
+__Structure of the song__
+
+Apart from that it has a bridge, this song doesn't have a very regular structure
+
+0 - 14: Intro, just guitar
+
+15 - 63: First verse. Bradley Coopers sings while being backed by the guitar.
+
+64 - 104: Second verse. Lady Gage sings. First a violin joins and later a piano as well
+
+105 - 145: Chorus. Lady Gaga reaches some very high notes, while still being backed by just a guitar, violin and piano. Halfway through Bradley Coopers joins in.
+
+146 - 166: Bridge. Lady Gaga sings just by her own again and drums join in while the song reaches to a climax again.
+
+167 - 217: Chorus. The chorus playes again, this time also with the drums that came in in the bridge.
+
+218 - 225: The last few seconds are an audience cheering.
+
+__Analysis__
+
+In the SSM you can clearly see there is a bridge, it stands out from all the other parts of the song. Especially in the timbre SSM. 
+
+The bridge is really powerful in this song, because of the bridge the song can reach a climax in which the singers (especially Lady Gaga) shound their vocals to the best of their ability. Without the bridge this song would be rather bland.
 
 Keys {.storyboard}
 =====================================
@@ -259,7 +388,8 @@ keys <- just_tiktok_billboard %>%
   labs(x = "Keys",
        y = "Frequency Ratio",
        title = "Distribution Across Keys by year by type") +
-  facet_wrap(~ year)
+  facet_wrap(~ year) +
+  theme_tiktok()
 
 ggplotly(keys)
 ```
@@ -473,4 +603,40 @@ subplot(ggplotly(cannibal_tempogram),
 Conclusion
 =====================================
 
-Conclusion. TikTok has an effect on music.
+Questions
+-----------------------------------------------------------------------
+
+### Questions
+
+In the introduction I mentioned that I wanted to research three things.
+
+__1. What characterizes a TikTok song__
+
+In this research we have seen that the model found that TikTok songs differ most on duration, danceability and tempo among other things. Overall TikTok songs are shorter, more danceable, and have a higher tempo at 125 bpm than regular pop songs.
+
+I, however, don't think necessarily is what characterizes a TikTok song. Throughout this research I have found that TikTok songs were very diverse, ranging from very fast paced rap to songs like Running Up That Hill by Kate Bush. A TikTok song is defined by the 20 seconds people seem to like, but from this research I have learned that it is not very systematic what becomes popular on TikTok.
+
+To conclude, a TikTok song can be characterized by its danceability, tempo and duration, but the difference with pop music is not big.
+
+__2. To what extent are popular music and TikTok music similar__
+
+This question I find hard to answer, but overall I feel like whatever is popular on TikTok becomes popular in music and whatever is popular in the music world is very likely to become popular on TikTok. Hard evidence for this I don't have though. 
+
+I don't feel like I can take conclusions from the analytics I have done.
+
+__3. How does TikTok music differ from popular music__
+
+This question has the same answer as question 1.
+
+Conclusion
+-----------------------------------------------------------------------
+
+### Conclusion
+
+To conclude, although there are differences, pop music and TikTok music share a lot of similarities. Both are not defined by one genre and both can have a lot of outliers as well as songs that follow trends.
+
+There is a lot to be said about the effect of TikTok on music. TikTok shortens the attention span and this has effect on how people listen to music and thus how music is produced. But it is not just TikTok that has an effect on music, it is also the digitization and the Spotify algorithm.
+
+Because there are so many factors, I don't feel like just musical analysis will answer the questions I have. But, it was very interesting to see where the differences lie and also to spot some trends that have happened over just 5 years, like the duration of songs becoming shorter, as well as the danceability declining.
+
+TikTok and popular music are intertwined, but it is yet unclear how exactly.
